@@ -1,7 +1,7 @@
+# game_logic.py
 import pygame
 from blocks import generate_new_block, rotate_block
 from game_display import draw_game
-from input_handler import handle_input
 from game_display import display_game_over  # 导入游戏结束显示函数
 
 # 检查方块是否超出边界或与其他方块发生冲突
@@ -18,7 +18,7 @@ def check_collision(block, block_x, block_y, game_board):
 def clear_full_lines(game_board):
     new_board = [row for row in game_board if any(cell == 0 for cell in row)]
     cleared_lines = len(game_board) - len(new_board)
-    new_board = [[0] * len(game_board[0])] * cleared_lines + new_board
+    new_board = [[0] * len(game_board[0]) for _ in range(cleared_lines)] + new_board
     return new_board, cleared_lines
 
 def start_game(screen, clock, font, level):
@@ -32,17 +32,27 @@ def start_game(screen, clock, font, level):
 
     # 游戏主循环
     while not game_over:
+        move_x = 0
+        rotate = False
+        fast_drop = False
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    move_x = -1
+                elif event.key == pygame.K_RIGHT:
+                    move_x = 1
+                elif event.key == pygame.K_UP:
+                    rotate = True
+                elif event.key == pygame.K_DOWN:
+                    fast_drop = True
 
         # 检查游戏是否满了
         if any(game_board[0]):  # 第一行有方块表示满了
-            display_game_over(screen, font)
+            display_game_over(screen)
             return False  # 结束游戏
-
-        # 处理用户输入
-        move_x, rotate, fast_drop = handle_input()
 
         # 尝试移动方块
         new_x = block_x + move_x
@@ -52,8 +62,18 @@ def start_game(screen, clock, font, level):
         # 旋转方块
         if rotate:
             rotated_block = rotate_block(block)
+            # 检查旋转后的方块是否会超出边界或碰撞
             if not check_collision(rotated_block, block_x, block_y, game_board):
                 block = rotated_block
+            else:
+                # 尝试左移一格再旋转
+                if not check_collision(rotated_block, block_x - 1, block_y, game_board):
+                    block_x -= 1
+                    block = rotated_block
+                # 尝试右移一格再旋转
+                elif not check_collision(rotated_block, block_x + 1, block_y, game_board):
+                    block_x += 1
+                    block = rotated_block
 
         # 方块下落逻辑
         current_time = pygame.time.get_ticks()
@@ -80,6 +100,6 @@ def start_game(screen, clock, font, level):
         pygame.display.flip()
 
         # 更新每帧
-        clock.tick(30)
+        clock.tick(60)  # 增加帧率，提高流畅性
 
     return True
