@@ -1,10 +1,8 @@
-# game_logic.py
+import sys
 import pygame
 from blocks import generate_new_block, rotate_block
-from game_display import draw_game
-from game_display import display_game_over  # 导入游戏结束显示函数
+from game_display import draw_game, display_game_over
 
-# 检查方块是否超出边界或与其他方块发生冲突
 def check_collision(block, block_x, block_y, game_board):
     for y, row in enumerate(block):
         for x, cell in enumerate(row):
@@ -21,16 +19,20 @@ def clear_full_lines(game_board):
     new_board = [[0] * len(game_board[0]) for _ in range(cleared_lines)] + new_board
     return new_board, cleared_lines
 
-def start_game(screen, clock, font, level):
-    block, color = generate_new_block()  # 生成方块
-    block_x, block_y = 4, 0  # 方块初始位置
+def start_game(screen, clock, font, small_font, level):
+    block, color = generate_new_block()
+    block_x, block_y = 4, 0
     game_over = False
-    drop_speed = 500 - (level * 40)  # 随着关卡提升，方块下落速度增加
+    drop_speed = max(50, 500 - (level * 40))  # 最小速度为50
     last_drop_time = pygame.time.get_ticks()
+    score = 0
+    start_time = pygame.time.get_ticks()
+    paused = False
+    lines_cleared_in_level = 0
+    lines_needed_for_level_up = 10
 
-    game_board = [[0] * 10 for _ in range(20)]  # 创建游戏的10x20棋盘
+    game_board = [[0] * 10 for _ in range(20)]
 
-    # 游戏主循环
     while not game_over:
         move_x = 0
         rotate = False
@@ -38,23 +40,37 @@ def start_game(screen, clock, font, level):
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return False
+                pygame.quit()
+                sys.exit()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    move_x = -1
-                elif event.key == pygame.K_RIGHT:
-                    move_x = 1
-                elif event.key == pygame.K_UP:
-                    rotate = True
-                elif event.key == pygame.K_DOWN:
-                    fast_drop = True
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+                elif event.key == pygame.K_SPACE:
+                    paused = not paused  # 切换暂停状态
+                elif not paused:
+                    if event.key == pygame.K_LEFT:
+                        move_x = -1
+                    elif event.key == pygame.K_RIGHT:
+                        move_x = 1
+                    elif event.key == pygame.K_UP:
+                        rotate = True
+                    elif event.key == pygame.K_DOWN:
+                        fast_drop = True
 
-        # 检查游戏是否满了
-        if any(game_board[0]):  # 第一行有方块表示满了
-            display_game_over(screen)
-            return False  # 结束游戏
+        if paused:
+            # 显示“游戏暂停”文本
+            pause_text = font.render("游戏暂停", True, (255, 255, 255))
+            screen.blit(pause_text, (80, 250))
+            pygame.display.flip()
+            clock.tick(5)  # 控制暂停时的帧率
+            continue  # 跳过本次循环
 
-        # 尝试移动方块
+        if any(game_board[0]):
+            display_game_over(screen, font)
+            return False
+
+        # 移动方块
         new_x = block_x + move_x
         if not check_collision(block, new_x, block_y, game_board):
             block_x = new_x
@@ -62,27 +78,25 @@ def start_game(screen, clock, font, level):
         # 旋转方块
         if rotate:
             rotated_block = rotate_block(block)
-            # 检查旋转后的方块是否会超出边界或碰撞
             if not check_collision(rotated_block, block_x, block_y, game_board):
                 block = rotated_block
             else:
-                # 尝试左移一格再旋转
+                # 尝试调整位置再旋转
                 if not check_collision(rotated_block, block_x - 1, block_y, game_board):
                     block_x -= 1
                     block = rotated_block
-                # 尝试右移一格再旋转
                 elif not check_collision(rotated_block, block_x + 1, block_y, game_board):
                     block_x += 1
                     block = rotated_block
 
-        # 方块下落逻辑
+        # 方块下落
         current_time = pygame.time.get_ticks()
         if current_time - last_drop_time > (drop_speed if not fast_drop else 50):
             new_y = block_y + 1
             if not check_collision(block, block_x, new_y, game_board):
                 block_y = new_y
             else:
-                # 方块到底，锁定方块到棋盘
+                # 锁定方块到棋盘
                 for y, row in enumerate(block):
                     for x, cell in enumerate(row):
                         if cell:
@@ -90,16 +104,25 @@ def start_game(screen, clock, font, level):
                 block, color = generate_new_block()
                 block_x, block_y = 4, 0
                 if check_collision(block, block_x, block_y, game_board):
-                    game_over = True  # 无法生成新的方块，游戏结束
-                game_board, _ = clear_full_lines(game_board)  # 清除已填满的行
+                    game_over = True
+                game_board, cleared_lines = clear_full_lines(game_board)
+                if cleared_lines > 0:
+                    score += cleared_lines * 10
+                    lines_cleared_in_level += cleared_lines
 
             last_drop_time = current_time
 
+        # 检查是否完成当前关卡
+        if lines_cleared_in_level >= lines_needed_for_level_up:
+            return True
+
+        # 计算已玩时长
+        elapsed_time = (pygame.time.get_ticks() - start_time) // 1000
+
         # 绘制游戏
-        draw_game(screen, block, block_x, block_y, color, game_board)
+        draw_game(screen, block, block_x, block_y, color, game_board, score, elapsed_time, level, small_font)
         pygame.display.flip()
 
-        # 更新每帧
-        clock.tick(60)  # 增加帧率，提高流畅性
+        clock.tick(60)
 
-    return True
+    return False
