@@ -10,11 +10,17 @@
 
 ## 📸 游戏截图
 
-### PC 版本
+### V2.0 最新版本
+全新 3D 界面 + 音效系统
+
+![V2.0-1](images/V2.0-1.png)
+![V2.0-2](images/V2.0-2.png)
+
+### V1.0 版本
 [![PC Version](https://i.postimg.cc/qqwcjG7b/V1-0.png)](https://postimg.cc/LgqZsLLL)
 
-### 移动端版本
-支持触屏虚拟按键控制
+### V0.1 早期版本
+[![V0.1](https://i.postimg.cc/fRJCNKN4/V0-1.png)](https://postimg.cc/K1hB7tjQ)
 
 ---
 
