@@ -49,7 +49,7 @@ def draw_3d_block(surface, x, y, size, color, alpha=255):
 
 
 def draw_gradient_background(screen, width, height):
-    """绘制渐变背景带星空效果"""
+    """绘制渐变背景"""
     # 基础渐变
     for y in range(height):
         ratio = y / height
@@ -59,13 +59,9 @@ def draw_gradient_background(screen, width, height):
         pygame.draw.line(screen, (r, g, b), (0, y), (width, y))
     
     # 绘制星星
-    star_positions = [
-        (80, 60), (200, 40), (350, 80), (450, 120), (150, 150),
-        (300, 200), (100, 280), (400, 320), (180, 380), (320, 450),
-        (120, 520), (380, 580), (220, 620), (480, 680)
-    ]
+    star_positions = [(50, 40), (150, 80), (250, 50), (350, 90), (100, 120)]
     for i, (sx, sy) in enumerate(star_positions):
-        brightness = 150 + (i * 13) % 105
+        brightness = 150 + (i * 20) % 105
         size = 1 + (i % 3)
         pygame.draw.circle(screen, (brightness, brightness, 220), (sx, sy), size)
 
@@ -118,7 +114,7 @@ def draw_current_block(screen, block, block_x, block_y, color, config, offset_x,
 
 
 def draw_ghost_block(screen, block, block_x, drop_y, color, config, offset_x, offset_y):
-    """绘制方块落点预览（幽灵方块）"""
+    """绘制方块落点预览"""
     cell_size = config['cell_size']
     ghost_color = tuple(max(0, min(255, c // 4 + 30)) for c in color)
     
@@ -135,9 +131,9 @@ def draw_ghost_block(screen, block, block_x, drop_y, color, config, offset_x, of
 
 def draw_next_block_preview(screen, next_block, next_color, font, config, sidebar_x, start_y):
     """绘制下一个方块预览"""
-    cell_size = 28
-    panel_width = 160
-    panel_height = 120
+    cell_size = 24
+    panel_width = 100
+    panel_height = 80
     
     # 预览面板背景
     panel_rect = pygame.Rect(sidebar_x, start_y, panel_width, panel_height)
@@ -146,14 +142,14 @@ def draw_next_block_preview(screen, next_block, next_color, font, config, sideba
     
     # 标题
     title = font.render("NEXT", True, COLORS['text_gold'])
-    screen.blit(title, (sidebar_x + 10, start_y + 8))
+    screen.blit(title, (sidebar_x + 5, start_y + 3))
     
     # 计算居中位置
     if next_block:
         block_width = len(next_block[0]) * cell_size
         block_height = len(next_block) * cell_size
         start_x = sidebar_x + (panel_width - block_width) // 2
-        block_y = start_y + 40 + (panel_height - 40 - block_height) // 2
+        block_y = start_y + 28 + (panel_height - 28 - block_height) // 2
         
         for y, row in enumerate(next_block):
             for x, cell in enumerate(row):
@@ -167,47 +163,38 @@ def draw_next_block_preview(screen, next_block, next_color, font, config, sideba
 def draw_ui_panel(screen, score, elapsed_time, level, lines_cleared, lines_needed,
                  font, small_font, sidebar_x, start_y):
     """绘制UI信息面板"""
-    panel_width = 160
+    panel_width = 100
     
     panel_items = [
-        ("LEVEL", level, COLORS['text_gold']),
-        ("SCORE", score, COLORS['text_cyan']),
-        ("TIME", f"{elapsed_time}s", COLORS['text_white']),
-        ("LINES", f"{lines_cleared}/{lines_needed}", COLORS['text_white'])
+        ("LV", level, COLORS['text_gold']),
+        ("SC", score, COLORS['text_cyan']),
+        ("LI", f"{lines_cleared}/{lines_needed}", COLORS['text_white'])
     ]
     
     y_pos = start_y
     for label, value, color in panel_items:
-        # 标签背景
-        label_bg = pygame.Rect(sidebar_x, y_pos, panel_width, 50)
-        pygame.draw.rect(screen, (30, 30, 50), label_bg, border_radius=4)
-        pygame.draw.rect(screen, COLORS['border'], label_bg, 1, border_radius=4)
-        
         # 标签
         label_text = small_font.render(label, True, (150, 150, 170))
-        screen.blit(label_text, (sidebar_x + 8, y_pos + 6))
+        screen.blit(label_text, (sidebar_x, y_pos))
         
         # 值
         value_text = font.render(str(value), True, color)
-        screen.blit(value_text, (sidebar_x + 8, y_pos + 22))
+        screen.blit(value_text, (sidebar_x, y_pos + 16))
         
-        y_pos += 60
+        y_pos += 50
 
 
 def draw_pause_overlay(screen, font, small_font, width, height):
     """绘制暂停遮罩"""
-    # 半透明遮罩
     overlay = pygame.Surface((width, height), pygame.SRCALPHA)
     overlay.fill((0, 0, 0, 180))
     screen.blit(overlay, (0, 0))
     
-    # 暂停文字
     pause_text = font.render("PAUSED", True, COLORS['text_gold'])
     text_rect = pause_text.get_rect(center=(width // 2, height // 2 - 20))
     screen.blit(pause_text, text_rect)
     
-    # 提示文字
-    hint_text = small_font.render("Press SPACE to continue", True, (200, 200, 200))
+    hint_text = small_font.render("Touch || to continue", True, (200, 200, 200))
     hint_rect = hint_text.get_rect(center=(width // 2, height // 2 + 20))
     screen.blit(hint_text, hint_rect)
 
@@ -215,21 +202,21 @@ def draw_pause_overlay(screen, font, small_font, width, height):
 def draw_game(screen, block, block_x, block_y, color, game_board, score, 
               elapsed_time, level, small_font, font, medium_font, config,
               next_block=None, next_color=None, ghost_y=None, 
-              lines_cleared=0, lines_needed=10):
-    """主绘制函数"""
+              lines_cleared=0, lines_needed=10, buttons=None, pause_button=None):
+    """主绘制函数 - 移动端"""
     width, height = screen.get_size()
     
     # 计算布局
-    padding = config['padding']
+    padding = 20
     cell_size = config['cell_size']
     board_width = config['board_cols'] * cell_size
     
-    # 棋盘位置
+    # 棋盘位置（偏左）
     board_x = padding
-    board_y = padding + 20
+    board_y = padding + 50
     
     # 侧边栏位置
-    sidebar_x = board_x + board_width + padding
+    sidebar_x = board_x + board_width + 15
     
     # 绘制背景
     draw_gradient_background(screen, width, height)
@@ -252,33 +239,24 @@ def draw_game(screen, block, block_x, block_y, color, game_board, score,
     if next_block and next_color:
         draw_next_block_preview(screen, next_block, next_color, small_font, config, sidebar_x, board_y)
     
-    # 绘制UI面板（位于预览下方）
+    # 绘制UI面板
     draw_ui_panel(screen, score, elapsed_time, level, lines_cleared, lines_needed,
-                  font, small_font, sidebar_x, board_y + 140)
+                  font, small_font, sidebar_x, board_y + 90)
     
-    # 绘制操作提示
-    tiny_font = pygame.font.SysFont(None, 18)
-    hints = [
-        ("Controls:", COLORS['text_gold']),
-        ("Left/Right - Move", (180, 180, 180)),
-        ("Up - Rotate", (180, 180, 180)),
-        ("Down - Soft Drop", (180, 180, 180)),
-        ("Shift - Hard Drop", (180, 180, 180)),
-        ("Space - Pause", (180, 180, 180))
-    ]
+    # 绘制虚拟按键
+    if buttons:
+        for button in buttons.values():
+            button.draw(screen)
     
-    y = board_y + 420
-    for text, color in hints:
-        hint_text = tiny_font.render(text, True, color)
-        screen.blit(hint_text, (sidebar_x, y))
-        y += 22
+    # 绘制暂停按钮
+    if pause_button:
+        pause_button.draw(screen)
 
 
 def display_game_over(screen, font, small_font, score=0, level=0):
     """显示游戏结束画面"""
     width, height = screen.get_size()
     
-    # 渐变背景
     for y in range(height):
         ratio = y / height
         color = (int(40 * (1 - ratio) + 10 * ratio),
@@ -286,12 +264,10 @@ def display_game_over(screen, font, small_font, score=0, level=0):
                 int(20 * (1 - ratio) + 20 * ratio))
         pygame.draw.line(screen, color, (0, y), (width, y))
     
-    # 游戏结束文字
     game_over_text = font.render("GAME OVER", True, (255, 80, 80))
     text_rect = game_over_text.get_rect(center=(width // 2, height // 2 - 60))
     screen.blit(game_over_text, text_rect)
     
-    # 显示最终得分和关卡
     score_text = small_font.render(f"Score: {score}", True, (255, 215, 0))
     score_rect = score_text.get_rect(center=(width // 2, height // 2))
     screen.blit(score_text, score_rect)
@@ -308,18 +284,15 @@ def display_level_complete(screen, font, small_font, level):
     """显示关卡完成画面"""
     width, height = screen.get_size()
     
-    # 半透明遮罩
     overlay = pygame.Surface((width, height), pygame.SRCALPHA)
     overlay.fill((0, 100, 0, 180))
     screen.blit(overlay, (0, 0))
     
-    # 恭喜文字
     congrats_text = font.render("LEVEL CLEAR!", True, (100, 255, 100))
     text_rect = congrats_text.get_rect(center=(width // 2, height // 2 - 30))
     screen.blit(congrats_text, text_rect)
     
-    # 下一关提示
-    next_level_text = small_font.render(f"Next Level: {level + 1}", True, (255, 255, 255))
+    next_level_text = small_font.render(f"Next: {level + 1}", True, (255, 255, 255))
     next_rect = next_level_text.get_rect(center=(width // 2, height // 2 + 20))
     screen.blit(next_level_text, next_rect)
     
